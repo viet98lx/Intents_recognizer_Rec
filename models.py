@@ -66,7 +66,7 @@ class Beacon(Model):
 
                 self.bseq_encoder = tf.sparse_reshape(self.bseq, shape=[-1, self.nb_items], name="bseq_2d")
                 self.bseq_encoder = tf.sparse_tensor_dense_matmul(self.bseq_encoder,tf.eye(self.nb_items, dtype=tf.float32))
-                self.bseq_encoder = self.encoder_intent(self.bseq_encoder)
+                # self.bseq_encoder = self.encoder_intent(self.bseq_encoder)
                 self.bseq_encoder = self.encode_basket_intent(self.bseq_encoder, self.C_Basket)
                 self.bseq_encoder = tf.reshape(self.bseq_encoder, shape=[-1, self.max_seq_length, self.nb_items],
                                                name="bsxMxN")
@@ -170,8 +170,10 @@ class Beacon(Model):
 
     def encode_basket_intent(self, binput, beta, is_sparse=False):
         with tf.name_scope("Intent_Basket_Encoder"):
-            I_B_term = tf.reduce_max(tf.tensordot(binput,self.I_B_Diag, axes=1, name="XxI_B"), axis=0)
-            Corr_term = tf.reduce_max(tf.tensordot(binput, self.A, axes=1, name="XxA"), axis=0)
+            # I_B_term = tf.reduce_max(tf.tensordot(binput,self.I_B_Diag, axes=1, name="XxI_B"), axis=0)
+            I_B_term = tf.matmul(binput, self.I_B_Diag)
+            intent_binput = self.encoder_intent(binput)
+            Corr_term = tf.reduce_max(tf.tensordot(intent_binput, self.A, axes=1, name="XxA"), axis=0)
             encoder = I_B_term + self.relu_with_threshold(Corr_term, beta)
                 # encoder = tf.matmul(binput, self.I_B_Diag, name="XxI_B")
                 # encoder += self.relu_with_threshold(tf.matmul(binput, self.A, name="XxA"), beta)
