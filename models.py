@@ -109,8 +109,8 @@ class Beacon(Model):
             total_parameters = 0
             print("-------------------- SUMMARY ----------------------")
             tf.summary.scalar("C_Basket", self.C_Basket)
-
-            tf.summary.histogram("Attention weight", tf.nn.softmax(self.intent_w, axis = 0))
+            for i in range(self.nb_intent):
+                tf.summary.histogram("Attention weight %d".format(i+1), tf.nn.softmax(self.intent_w, axis = 0)[i])
 
             for grad, var in self.grads:
                 tf.summary.histogram(var.name, var)
