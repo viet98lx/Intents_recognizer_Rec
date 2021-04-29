@@ -66,7 +66,7 @@ class Beacon(Model):
 
                 self.bseq = tf.sparse.to_dense(self.bseq)
                 self.bseq_encoder = tf.reshape(self.bseq, shape=[-1, self.nb_items], name="bseq_2d")
-                self.bseq_encoder = self.encoder_intent()
+                self.bseq_encoder = self.encoder_intent(self.bseq_encoder)
                 self.bseq_encoder = self.encode_basket_intent(self.bseq_encoder, self.C_Basket)
                 self.bseq_encoder = tf.reshape(self.bseq_encoder, shape=[-1, self.max_seq_length, self.nb_items],
                                                name="bsxMxN")
