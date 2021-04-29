@@ -66,7 +66,7 @@ class Beacon(Model):
 
                 self.bseq_encoder = tf.sparse_reshape(self.bseq, shape=[-1, self.nb_items], name="bseq_2d")
                 self.bseq_encoder = self.encoder_intent(tf.to_dense(self.bseq_encoder))
-                self.bseq_encoder = self.encode_basket_graph(self.bseq_encoder, self.C_Basket)
+                self.bseq_encoder = self.encode_basket_intent(self.bseq_encoder, self.C_Basket)
                 self.bseq_encoder = tf.reshape(self.bseq_encoder, shape=[-1, self.max_seq_length, self.nb_items],
                                                name="bsxMxN")
                 self.bseq_encoder = create_basket_encoder(self.bseq_encoder, emb_dim,
@@ -167,14 +167,25 @@ class Beacon(Model):
         intent_encoder = tf.math.multiply(tf.expand_dims(binput, axis=0), intent_probs)
         return intent_encoder
 
-    def encode_basket_graph(self, binput, beta, is_sparse=False):
-        with tf.name_scope("Graph_Encoder"):
+    def encode_basket_intent(self, binput, beta, is_sparse=False):
+        with tf.name_scope("Intent_Basket_Encoder"):
             I_B_term = tf.reduce_max(tf.tensordot(binput,self.I_B_Diag, axes=1, name="XxI_B"), axis=0)
             Corr_term = tf.reduce_max(tf.tensordot(binput, self.A, axes=1, name="XxA"), axis=0)
             encoder = I_B_term + self.relu_with_threshold(Corr_term, beta)
                 # encoder = tf.matmul(binput, self.I_B_Diag, name="XxI_B")
                 # encoder += self.relu_with_threshold(tf.matmul(binput, self.A, name="XxA"), beta)
         return encoder
+
+    def encode_basket_graph(self, binput, beta, is_sparse=False):
+        with tf.name_scope("Graph_Encoder"):
+            if is_sparse:
+                encoder = tf.sparse_tensor_dense_matmul(binput, self.I_B_Diag, name="XxI_B")
+                encoder += self.relu_with_threshold(tf.sparse_tensor_dense_matmul(binput, self.A, name="XxA"), beta)
+            else:
+                encoder = tf.matmul(binput, self.I_B_Diag, name="XxI_B")
+                encoder += self.relu_with_threshold(tf.matmul(binput, self.A, name="XxA"), beta)
+        return encoder
+
 
     def get_item_bias(self):
         return self.session.run(self.I_B)
