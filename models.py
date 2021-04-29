@@ -30,13 +30,13 @@ class Beacon(Model):
 
     def __init__(self, sess, emb_dim, rnn_units, alpha,
                  max_seq_length, item_probs, adj_matrix, top_k,
-                 batch_size, rnn_cell_type, rnn_dropout_rate, seed, learning_rate):
+                 batch_size, rnn_cell_type, rnn_dropout_rate, seed, learning_rate, nb_intent):
 
         super().__init__(sess, seed, learning_rate, name="GRN")
 
         self.emb_dim = emb_dim
         self.rnn_units = rnn_units
-
+        self.nb_intent = nb_intent
         self.max_seq_length = max_seq_length
         self.nb_items = len(item_probs)
         self.item_probs = item_probs
@@ -55,6 +55,8 @@ class Beacon(Model):
 
             self.C_Basket = tf.get_variable(dtype=tf.float32, initializer=tf.constant(adj_matrix.mean()), name="C_B")
             self.y = tf.placeholder(dtype=tf.float32, shape=(batch_size, self.nb_items), name='Target_basket')
+            self.intent_w = tf.get_variable(dtype=tf.float32, initializer=tf.initializers.glorot_uniform(),
+                                      shape=(self.nb_intent, self.nb_items), name="W_Intent")
 
             # Basket Sequence encoder
             with tf.name_scope("Basket_Sequence_Encoder"):
@@ -63,7 +65,8 @@ class Beacon(Model):
                 self.bseq_length = tf.placeholder(dtype=tf.int32, shape=(batch_size,), name='bseq_length')
 
                 self.bseq_encoder = tf.sparse_reshape(self.bseq, shape=[-1, self.nb_items], name="bseq_2d")
-                self.bseq_encoder = self.encode_basket_graph(self.bseq_encoder, self.C_Basket, True)
+                self.bseq_encoder = self.encoder_intent(tf.to_dense(self.bseq_encoder))
+                self.bseq_encoder = self.encode_basket_graph(self.bseq_encoder, self.C_Basket)
                 self.bseq_encoder = tf.reshape(self.bseq_encoder, shape=[-1, self.max_seq_length, self.nb_items],
                                                name="bsxMxN")
                 self.bseq_encoder = create_basket_encoder(self.bseq_encoder, emb_dim,
@@ -84,6 +87,7 @@ class Beacon(Model):
                                       shape=(self.rnn_units, self.nb_items), name="W_H")
 
                 next_item_probs = tf.nn.sigmoid(tf.matmul(h_T, W_H))
+
                 logits = (1.0 - self.alpha) * next_item_probs + self.alpha * self.encode_basket_graph(next_item_probs,
                                                                                                       tf.constant(0.0))
 
@@ -105,19 +109,8 @@ class Beacon(Model):
             print("-------------------- SUMMARY ----------------------")
             tf.summary.scalar("C_Basket", self.C_Basket)
 
-            # summarize 2 terms in basket encoder
-            # tf.summary.histogram("X_mul_I_B",tf.sparse_tensor_dense_matmul(tf.sparse_reshape(self.bseq, shape=[-1, self.nb_items]),
-            #                                                    self.I_B_Diag))
-            # tf.summary.histogram("Corr_term", self.relu_with_threshold(
-            #     tf.sparse_tensor_dense_matmul(tf.sparse_reshape(self.bseq, shape=[-1, self.nb_items]), self.A),
-            #     self.C_Basket))
-            # before = tf.count_nonzero(
-            #     tf.sparse_tensor_dense_matmul(tf.sparse_reshape(self.bseq, shape=[-1, self.nb_items]), self.A))
-            # after = tf.count_nonzero(self.relu_with_threshold(
-            #     tf.sparse_tensor_dense_matmul(tf.sparse_reshape(self.bseq, shape=[-1, self.nb_items]), self.A),
-            #     self.C_Basket))
-            # tf.summary.scalar("Ratio_filter_threshold",
-            #                   tf.cast(after, dtype=tf.float32) / tf.cast(before, dtype=tf.float32))
+            tf.summary.histogram("Attention weight", tf.nn.softmax(self.intent_w, axis = 0))
+
             for grad, var in self.grads:
                 tf.summary.histogram(var.name, var)
                 tf.summary.histogram(var.name + '/grad', grad)
@@ -169,14 +162,18 @@ class Beacon(Model):
                                 feed_dict={self.bseq_length: s_length, self.bseq.indices: bseq_indices,
                                            self.bseq.values: bseq_values})
 
+    def encoder_intent(self, binput):
+        intent_probs = tf.expand_dims(tf.nn.softmax(self.intent_w, axis = 0), axis=1)
+        intent_encoder = tf.math.multiply(tf.expand_dims(binput, axis=0), intent_probs)
+        return intent_encoder
+
     def encode_basket_graph(self, binput, beta, is_sparse=False):
         with tf.name_scope("Graph_Encoder"):
-            if is_sparse:
-                encoder = tf.sparse_tensor_dense_matmul(binput, self.I_B_Diag, name="XxI_B")
-                encoder += self.relu_with_threshold(tf.sparse_tensor_dense_matmul(binput, self.A, name="XxA"), beta)
-            else:
-                encoder = tf.matmul(binput, self.I_B_Diag, name="XxI_B")
-                encoder += self.relu_with_threshold(tf.matmul(binput, self.A, name="XxA"), beta)
+            I_B_term = tf.reduce_max(tf.tensordot(binput,self.I_B_Diag, axes=1, name="XxI_B"), axis=0)
+            Corr_term = tf.reduce_max(tf.tensordot(binput, self.A, axes=1, name="XxA"), axis=0)
+            encoder = I_B_term + self.relu_with_threshold(Corr_term, beta)
+                # encoder = tf.matmul(binput, self.I_B_Diag, name="XxI_B")
+                # encoder += self.relu_with_threshold(tf.matmul(binput, self.A, name="XxA"), beta)
         return encoder
 
     def get_item_bias(self):
