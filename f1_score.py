@@ -21,11 +21,12 @@ list_seq_topk_predicted = []
 with open(result_file, 'r') as f:
     lines = f.readlines()
     for i, line in enumerate(lines):
-        ground_truth = line.split('|')[0]
+        elements = line.split('|')
+        ground_truth = elements[0]
         list_item = re.split('\\s+',ground_truth.split(':')[1])
         list_seq.append(list_item.copy())
         list_item.clear()
-        predicted_items = line.split('|')[1:top_k + 1]
+        predicted_items = elements[1:top_k + 1]
         list_top_k_item = []
         for item in predicted_items:
             item_key = item.strip().split(':')[0]
