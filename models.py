@@ -89,7 +89,7 @@ class Beacon(Model):
 
                 next_item_probs = tf.nn.sigmoid(tf.matmul(h_T, W_H))
 
-                logits = (1.0 - self.alpha) * next_item_probs + self.alpha * self.encode_basket_graph(next_item_probs,
+                logits = (1.0 - self.alpha) * next_item_probs + self.alpha * self.encode_basket_intent(next_item_probs,
                                                                                                       tf.constant(0.0))
 
             with tf.name_scope("Loss"):
