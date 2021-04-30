@@ -138,7 +138,7 @@ def train_network(sess, net, train_generator, validate_generator, nb_epoch,
         # imprv_ratio = (val_best_performance[-1] - avg_val_loss) / val_best_performance[-1]
         imprv_ratio = (test_best_performance[-1] - avg_test_loss) / test_best_performance[-1]
 
-        if imprv_ratio > epsilon and avg_test_recall > test_best_recall:
+        if avg_test_recall > test_best_recall:
             # print("# The validation's loss is improved from " + "{:.8f}".format(val_best_performance[-1]) + \
             #       " to " + "{:.8f}".format(avg_val_loss))
             # val_best_performance.append(avg_val_loss)
