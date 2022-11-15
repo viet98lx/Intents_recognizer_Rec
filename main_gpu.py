@@ -135,10 +135,10 @@ if config.train_mode:
 
         # Initialize the network
         print(" + Initialize the network")
-        net = models.Beacon(sess, config.emb_dim, config.rnn_unit, config.alpha, MAX_SEQ_LENGTH, item_probs, adj_matrix,
-                            config.top_k,
-                            config.batch_size, config.rnn_cell_type, config.dropout_rate, config.seed,
-                            config.learning_rate, config.nb_intent)
+        net = models.MIBS(sess, config.emb_dim, config.rnn_unit, config.alpha, MAX_SEQ_LENGTH, item_probs, adj_matrix,
+                          config.top_k,
+                          config.batch_size, config.rnn_cell_type, config.dropout_rate, config.seed,
+                          config.learning_rate, config.nb_intent)
 
         print(" + Initialize parameters")
         sess.run(tf.global_variables_initializer())
@@ -157,10 +157,10 @@ if config.prediction_mode or config.tune_mode:
     with tf.Session(config=gpu_config) as sess:
         print(" + Initialize the network")
 
-        net = models.Beacon(sess, config.emb_dim, config.rnn_unit, config.alpha, MAX_SEQ_LENGTH, item_probs, adj_matrix,
-                            config.top_k,
-                            config.batch_size, config.rnn_cell_type, config.dropout_rate, config.seed,
-                            config.learning_rate, config.nb_intent)
+        net = models.MIBS(sess, config.emb_dim, config.rnn_unit, config.alpha, MAX_SEQ_LENGTH, item_probs, adj_matrix,
+                          config.top_k,
+                          config.batch_size, config.rnn_cell_type, config.dropout_rate, config.seed,
+                          config.learning_rate, config.nb_intent)
 
         print(" + Initialize parameters")
         sess.run(tf.global_variables_initializer())

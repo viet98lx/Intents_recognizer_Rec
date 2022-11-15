@@ -26,7 +26,7 @@ class Model:
         pass
 
 
-class Beacon(Model):
+class MIBS(Model):
 
     def __init__(self, sess, emb_dim, rnn_units, alpha,
                  max_seq_length, item_probs, adj_matrix, top_k,
